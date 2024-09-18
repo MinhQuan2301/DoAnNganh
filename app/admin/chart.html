@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Statistics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h3 {
+            text-align: center;
+        }
+        .chart-container {
+            width: 80%;
+            margin: auto;
+        }
+        canvas {
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h3>Book Statistics</h3>
+
+    <!-- Biểu đồ thống kê theo thể loại -->
+    <div class="chart-container">
+        <h4>Books by Category</h4>
+        <canvas id="categoryChart"></canvas>
+    </div>
+
+    <!-- Biểu đồ thống kê theo số sao -->
+    <div class="chart-container">
+        <h4>Books by Star Rating</h4>
+        <canvas id="starRatingChart"></canvas>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Nhận dữ liệu từ Flask
+            var chartData = {{ chart_data|tojson }};
+
+            // Dữ liệu cho biểu đồ số sách theo thể loại
+            var ctx1 = document.getElementById('categoryChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: chartData.categories,
+                    datasets: [{
+                        label: 'Number of Books',
+                        data: chartData.category_counts,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Dữ liệu cho biểu đồ số sách theo số sao
+            var ctx2 = document.getElementById('starRatingChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: chartData.star_ratings,
+                    datasets: [{
+                        label: 'Number of Books',
+                        data: chartData.star_rating_counts,
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="search-bar-container d-grid gap-2 col-6 mx-auto">
+    <form id="search-form" class="search-bar d-flex align-items-center" method="get">
+        <div>
+            <button class="btn btn-danger btn-sm" style="display:none;" id="reset-btn" type="submit">&times;Reset</button>
+        </div>
+        <input class="form-control me-2" value="{{ kwd }}" id="search-box" type="text" name="kwd" placeholder="Nhập từ khóa...">
+        <div>
+            <button class="btn btn-primary" id="search-btn" style="background-color:blue" type="submit">Search</button>
+        </div>
+    </form>
+</div>
+
+<div id="search-results" class="container mt-4">
+    <!-- Kết quả tìm kiếm sẽ được hiển thị ở đây -->
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#search-form').on('submit', function(event) {
+            event.preventDefault(); // Ngăn chặn gửi form theo cách truyền thống
+
+            var keyword = $('#search-box').val();
+            $.ajax({
+                url: '/admin/chartstatsview',
+                method: 'GET',
+                data: { kwd: keyword },
+                success: function(response) {
+                    // Hiển thị kết quả tìm kiếm
+                    $('#search-results').html(response);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

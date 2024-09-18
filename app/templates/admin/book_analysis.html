@@ -1,0 +1,68 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+
+<h1>Book Borrowing Analysis for Year 2023</h1>
+
+<h2>Borrowing Statistics</h2>
+<canvas id="borrowingChart" width="400" height="200"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Gather the data for the chart
+    const aggregatedData = {{ aggregated_data | tojson }};
+
+    // Extract labels (book titles) and data (total borrowed) from the aggregated data
+    const labels = Object.keys(aggregatedData);
+    const data = Object.values(aggregatedData);
+
+    // Create the chart
+    const ctx = document.getElementById('borrowingChart').getContext('2d');
+    const borrowingChart = new Chart(ctx, {
+        type: 'line', // Can be 'line', 'bar', 'radar', etc.
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Borrowed',
+                data: data,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+
+<h2>Notifications</h2>
+<div>
+    {% if books_to_remove %}
+        <h3>Books to Remove</h3>
+        <ul>
+            {% for book_title, total_borrowed in books_to_remove %}
+            <li>{{ book_title }} - Total Borrowed: {{ total_borrowed }} (Consider removing)</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No books to remove.</p>
+    {% endif %}
+</div>
+
+<div>
+    {% if books_to_add %}
+        <h3>Books to Add</h3>
+        <ul>
+            {% for book_title, total_borrowed in books_to_add %}
+            <li>{{ book_title }} - Total Borrowed: {{ total_borrowed }} (Consider adding more)</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No books to add.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

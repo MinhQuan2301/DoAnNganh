@@ -1,0 +1,68 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+<h1>Total Borrowing Amount by User</h1>
+<canvas id="totalAmountChart" width="800" height="400"></canvas>
+<h1>Penalties per Month in 2023</h1>
+<canvas id="penaltyChart"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Dữ liệu biểu đồ từ server
+        var chartData = {{ chart_data | safe }};
+        var penaltyData = {{ penalty_data | safe }};
+
+        // Biểu đồ tổng số tiền mượn theo người dùng
+        var ctx1 = document.getElementById('totalAmountChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'User Name'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Total Amount (VND)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Biểu đồ hình phạt theo tháng trong năm 2023
+        var ctx2 = document.getElementById('penaltyChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: penaltyData,
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Month'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Penalties'
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
