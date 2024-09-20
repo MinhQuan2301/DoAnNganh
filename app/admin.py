@@ -3,18 +3,20 @@ import io
 import json
 import os
 import pickle
+from datetime import timedelta
 
 import numpy as np
 from flask_admin import BaseView, expose
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
 from app import admin
 from app.models import *
 from flask_admin.contrib.sqla import ModelView
 import matplotlib.pyplot as plt
-from flask import render_template, request
+from flask import render_template, request, session
 
 
 class ProductView(ModelView):
@@ -296,7 +298,7 @@ class BookAnalysisView(BaseView):
         return books_to_remove, books_to_add
 
 
-class ModelView(BaseView):
+class ModelManagementView(BaseView):
     @expose('/')
     def index(self):
         return self.render('admin/model.html')
@@ -304,88 +306,118 @@ class ModelView(BaseView):
     @expose('/train', methods=['POST'])
     def train(self):
         try:
-            # Huấn luyện mô hình Logistic Regression
-            train_logistic_regression()
-            result_message = "Mô hình đã được huấn luyện và lưu thành công."
+            model, accuracy, confusion_matrix_str = train_logistic_regression()
+            session['model'] = pickle.dumps(model)  # Save the model in session
+            result_message = "Model trained successfully."
         except Exception as e:
-            result_message = f"Có lỗi xảy ra trong quá trình huấn luyện: {str(e)}"
-        return self.render('admin/model.html', result_message=result_message)
+            result_message = f"An error occurred during training: {str(e)}"
+            accuracy = None
+            confusion_matrix_str = None
+
+        return self.render('admin/model.html', result_message=result_message, accuracy=accuracy,
+                           confusion_matrix=confusion_matrix_str)
 
     @expose('/predict', methods=['POST'])
     def predict(self):
         try:
+            # Lấy dữ liệu từ form
             quantity_book = request.form.get('quantity_book', type=int)
-            penalty = request.form.get('penalty', type=int)
-            days_late = request.form.get('days_late', type=int)
+            borrow_date_str = request.form.get('borrow_date')
+            return_date_str = request.form.get('return_date')
 
-            # Kiểm tra nếu giá trị là None
-            if quantity_book is None or penalty is None or days_late is None:
-                result_message = "Vui lòng nhập tất cả các trường thông tin."
+            # Chuyển đổi chuỗi ngày thành kiểu datetime
+            borrow_date = datetime.strptime(borrow_date_str, '%Y-%m-%d')
+            return_date = datetime.strptime(return_date_str, '%Y-%m-%d')
+
+            # Giả sử ngày phải trả là 14 ngày sau khi mượn
+            due_date = borrow_date + timedelta(days=14)
+
+            # Tính toán số ngày trễ (nếu có)
+            days_late = (return_date - due_date).days if return_date > due_date else 0
+
+            # Kiểm tra nếu thông tin nhập đủ
+            if quantity_book is None or borrow_date is None or return_date is None:
+                prediction_result = "Please provide all required fields."
             else:
-                input_data = np.array([[quantity_book, penalty, days_late]])
+                input_data = np.array([[quantity_book, days_late]])
 
-                model = load_model()
-                if model is None:
-                    result_message = "Mô hình không được tải. Vui lòng kiểm tra file 'logistic_model.pkl'."
+                # Kiểm tra nếu mô hình đã được huấn luyện
+                if 'model' not in session:
+                    prediction_result = "Model not trained yet. Please train the model first."
                 else:
+                    model = pickle.loads(session['model'])  # Load the model from session
                     prediction = model.predict(input_data)
-                    result_message = "Trả đúng hạn" if prediction[0] == 1 else "Trả trễ hạn"
-        except Exception as e:
-            result_message = f"Có lỗi xảy ra: {str(e)}"
 
-        return render_template('admin/model.html', result_message=result_message)
+                    # Dự đoán trả trễ hay không
+                    if prediction[0] == 1:
+                        prediction_result = "On time return"
+                        days_late = 0  # Nếu trả đúng hẹn, không có số ngày trễ
+                        penalty = None  # Không có hình phạt
+                    else:
+                        prediction_result = "Late return"
+
+                        # Dự đoán số ngày trễ
+                        days_late = self.predict_days_late(quantity_book)
+
+                        # Dự đoán hình phạt
+                        penalty = self.predict_penalty(days_late)
+
+        except Exception as e:
+            prediction_result = f"An error occurred: {str(e)}"
+
+        return self.render('admin/model.html', prediction_result=prediction_result, days_late=days_late,
+                           penalty=penalty)
+
+    def predict_days_late(self, quantity_book):
+        # Dự đoán số ngày trễ dựa trên số lượng sách hoặc các yếu tố khác
+        # Ví dụ: mô hình hồi quy để dự đoán số ngày trễ
+        # Ở đây dùng số lượng sách để dự đoán đơn giản (giả sử mỗi sách thêm 1 ngày trễ)
+        return quantity_book * 1  # Ví dụ đơn giản là số lượng sách càng nhiều thì ngày trễ càng nhiều
+
+    def predict_penalty(self, days_late):
+        # Ánh xạ số ngày trễ thành hình phạt dự đoán
+        if days_late == 0:
+            return None
+        elif days_late <= 2:
+            return "Mức phạt nhẹ: Trễ từ 1-2 ngày"
+        elif days_late <= 5:
+            return "Mức phạt trung bình: Trễ từ 3-5 ngày"
+        else:
+            return "Mức phạt nặng: Trễ hơn 5 ngày"
+
 
 def train_logistic_regression():
-    data = Borrowing_Receipt.query.all()
+    data = Borrowing_Receipt.query.all()  # Ví dụ mô phỏng
     records = []
+
     for receipt in data:
+        # Tính toán số ngày trễ từ ngày mượn và ngày trả
+        if receipt.return_date and receipt.due_date:
+            days_late = (receipt.return_date - receipt.due_date).days
+        else:
+            days_late = 0
+
         returned_on_time = 1 if receipt.return_date and receipt.return_date <= receipt.due_date else 0
+
         records.append({
             'quantity_book': receipt.quantity_book,
-            'penalty': receipt.penalty,
-            'days_late': (receipt.return_date - receipt.due_date).days if receipt.return_date else 0,
+            'days_late': days_late,
             'returned_on_time': returned_on_time
         })
 
     df = pd.DataFrame(records)
-    X = df[['quantity_book', 'penalty', 'days_late']]
+    X = df[['quantity_book', 'days_late']]
     y = df['returned_on_time']
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
     model = LogisticRegression(max_iter=1000)
     model.fit(X_train, y_train)
 
-    # Đường dẫn thư mục và file mô hình
-    model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
-    os.makedirs(model_dir, exist_ok=True)  # Tạo thư mục nếu chưa tồn tại
-    model_path = os.path.join(model_dir, 'logistic_model.pkl')
+    accuracy = model.score(X_test, y_test)
+    cm = confusion_matrix(y_test, model.predict(X_test))
+    confusion_matrix_str = str(cm)
 
-    # Lưu mô hình
-    with open(model_path, 'wb') as f:
-        pickle.dump(model, f)
-
-    # Kiểm tra xem file có được tạo ra không
-    if os.path.exists(model_path):
-        print("Mô hình đã được lưu thành công.")
-    else:
-        print("Lỗi: Mô hình không được lưu.")
-def load_model():
-    # Đường dẫn thư mục và file mô hình
-    model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
-    model_path = os.path.join(model_dir, 'logistic_model.pkl')
-
-    try:
-        with open(model_path, 'rb') as f:
-            model = pickle.load(f)
-        return model
-    except FileNotFoundError:
-        print("Lỗi: file 'logistic_model.pkl' không tìm thấy.")
-        return None
-    except pickle.PickleError as e:
-        print(f"Lỗi pickle: {e}")
-        return None
-    except Exception as e:
-        print(f"Lỗi khi tải mô hình: {e}")
-        return None
+    return model, accuracy, confusion_matrix_str
 
 
 admin.add_view(ProductView(Book, db.session))
@@ -396,6 +428,6 @@ admin.add_view(ChartView(name='Book Statistics', endpoint='book_stats'))
 admin.add_view((TotalAmount(name='Total Amount')))
 admin.add_view(ForecastView(name='Forecast', endpoint='forecast'))
 admin.add_view(BookAnalysisView(name='Book Analysis', endpoint='book_analysis', category='Reports'))
-admin.add_view(ModelView(name='Model Management', endpoint='model'))
+admin.add_view(ModelManagementView(name='Model Management'))
 
 

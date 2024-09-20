@@ -1,26 +1,53 @@
 {% extends 'admin/master.html' %}
-
+{% block head %}
+    {{ super() }}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/model.css') }}">
+{% endblock %}
 {% block body %}
-<h1>Model Training and Prediction</h1>
+<h1>Model Management</h1>
 
     <!-- Form để huấn luyện mô hình -->
-    <form action="{{ url_for('model.train') }}" method="post">
-        <button type="submit">Huấn luyện mô hình</button>
+    <h2>Train Model</h2>
+    <form action="{{ url_for('modelmanagementview.train') }}" method="POST">
+        <button type="submit">Train Model</button>
     </form>
+
+    <!-- Hiển thị kết quả huấn luyện nếu có -->
+    {% if result_message %}
+        <h3>{{ result_message }}</h3>
+        {% if accuracy %}
+            <p><strong>Accuracy:</strong> {{ accuracy }}</p>
+        {% endif %}
+        {% if confusion_matrix %}
+            <p><strong>Confusion Matrix:</strong> {{ confusion_matrix }}</p>
+        {% endif %}
+    {% endif %}
+
+    <hr>
 
     <!-- Form để dự đoán -->
-    <form action="{{ url_for('model.predict') }}" method="post">
-        <label for="quantity_book">Số lượng sách:</label>
-        <input type="number" id="quantity_book" name="quantity_book" required><br>
-        <label for="penalty">Phí phạt:</label>
-        <input type="number" id="penalty" name="penalty" required><br>
-        <label for="days_late">Số ngày trễ:</label>
-        <input type="number" id="days_late" name="days_late" required><br>
-        <input type="submit" value="Dự đoán">
+    <h2>Predict Return</h2>
+    <form action="{{ url_for('modelmanagementview.predict') }}" method="POST">
+        <label for="quantity_book">Quantity of Books:</label>
+        <input type="number" name="quantity_book" id="quantity_book" required><br><br>
+
+        <label for="borrow_date">Borrow Date:</label>
+        <input type="date" name="borrow_date" id="borrow_date" required><br><br>
+
+        <label for="return_date">Return Date:</label>
+        <input type="date" name="return_date" id="return_date" required><br><br>
+
+        <button type="submit">Predict</button>
     </form>
 
-    <!-- Hiển thị kết quả -->
-    {% if result_message %}
-        <p>{{ result_message }}</p>
+    <!-- Hiển thị kết quả dự đoán -->
+    {% if prediction_result %}
+        <h3>Prediction Result: {{ prediction_result }}</h3>
+    {% endif %}
+    {% if days_late %}
+        <p><strong>Days Late:</strong> {{ days_late }}</p>
+    {% endif %}
+    {% if penalty %}
+        <p><strong>Predicted Penalty:</strong> {{ penalty }}</p>
     {% endif %}
 {% endblock %}
