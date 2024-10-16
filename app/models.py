@@ -118,15 +118,15 @@ if __name__ == "__main__":
         # file_path = 'C:/Users/MinhQuan/OneDrive/Desktop/DoAnNganh/DoAnNganh/app/static/data_import/Book.xlsx'
         # import_books_from_excel(file_path)
         #
-        # def import_faculty_from_excel(path):
-        #     file = pd.read_excel(path)
-        #     for index, row in file.iterrows():
-        #         faculty = Faculty(
-        #             name=row['Khoa']
-        #         )
-        #         db.session.add(faculty)
-        #     db.session.commit()
-        #
+        def import_faculty_from_excel(path):
+            file = pd.read_excel(path)
+            for index, row in file.iterrows():
+                faculty = Faculty(
+                    name=row['Khoa']
+                )
+                db.session.add(faculty)
+            db.session.commit()
+
         # file = 'C:/Users/MinhQuan/OneDrive/Desktop/DoAnNganh/DoAnNganh/app/static/data_import/Faculty.xlsx'
         # import_faculty_from_excel(file)
         #
@@ -135,20 +135,14 @@ if __name__ == "__main__":
         #     try:
         #         File = pd.read_excel(f)
         #         faculty_ids = [faculty.id for faculty in Faculty.query.all()]
-        #
         #         for index, row in File.iterrows():
-        #             # Kiểm tra xem 'full_name' hoặc 'ms_code' có bị thiếu hay không
         #             if pd.isna(row['full_name']) or pd.isna(row['code']):
         #                 print(f"Bỏ qua bản ghi vì thiếu full_name hoặc code: {row}")
         #                 continue
-        #
-        #             # Kiểm tra xem người dùng đã tồn tại hay chưa
         #             existing_user = User.query.filter_by(full_name=row['full_name'], ms_code=row['code']).first()
         #             if existing_user:
         #                 print(f"Người dùng đã tồn tại: {row['full_name']} với code: {row['code']}")
         #                 continue
-        #
-        #             # Tạo người dùng mới
         #             user = User(
         #                 full_name=row['full_name'],
         #                 email=row['email'],
@@ -160,17 +154,15 @@ if __name__ == "__main__":
         #                 faculty_id=random.choice(faculty_ids) if faculty_ids else None
         #             )
         #             db.session.add(user)
-        #
         #         db.session.commit()
         #         print('Đã thêm user thành công')
-        #
         #     except IntegrityError as e:
         #         print(f"Đã xảy ra lỗi IntegrityError: {e}")
         #         db.session.rollback()
         #     except Exception as e:
         #         print(f"Đã xảy ra lỗi: {e}")
         #         db.session.rollback()
-        #
+
         # f = 'C:/Users/MinhQuan/OneDrive/Desktop/DoAnNganh/DoAnNganh/app/static/data_import/User.xlsx'
         # import_User_from_excel(f)
         # print("đã thêm user")
@@ -208,7 +200,7 @@ if __name__ == "__main__":
         #
         #     except Exception as e:
         #         print(f"Đã xảy ra lỗi: {e}")
-        #
+
         #
         # path = 'C:/Users/MinhQuan/OneDrive/Desktop/DoAnNganh/DoAnNganh/app/static/data_import/Review.xlsx'
         # add_reviews(path)
@@ -235,5 +227,5 @@ if __name__ == "__main__":
         # import_Borrowing_from_excel(path_file)
         #
         # print('đã thêm borrowing')
-        #
+
 

@@ -8,20 +8,23 @@ from datetime import timedelta
 import numpy as np
 from flask_admin import BaseView, expose
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import confusion_matrix
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.metrics import confusion_matrix, mean_absolute_error, mean_squared_error
 from sklearn.model_selection import train_test_split
-
+import seaborn as sns
 from app import admin
 from app.models import *
 from flask_admin.contrib.sqla import ModelView
 import matplotlib.pyplot as plt
-from flask import render_template, request, session
+from flask import render_template, request, session, url_for
 
 
 class ProductView(ModelView):
     can_view_details = True
     can_export = True
+    edit_modal = True
+    details_modal = True
+    create_modal = True
     column_filters = ['title', 'book_category', 'star_rating']
     column_searchable_list = ['title', 'book_category', 'star_rating']
     column_formatters = {
@@ -32,6 +35,9 @@ class ProductView(ModelView):
 class FacultyView(ModelView):
     can_view_details = True
     can_export = True
+    edit_modal = True
+    details_modal = True
+    create_modal = True
     column_filters = ['name']
     column_searchable_list = ['name']
 
@@ -39,6 +45,9 @@ class FacultyView(ModelView):
 class UserView(ModelView):
     can_view_details = True
     can_export = True
+    edit_modal = True
+    details_modal = True
+    create_modal = True
     column_exclude_list = ['fs_uniquifier']
     column_filters = ['email', 'full_name']
     column_searchable_list = ['full_name', 'email']
@@ -48,6 +57,9 @@ class ReviewModel(ModelView):
     column_filters = ['user_id', 'book_id', 'user_id']
     can_view_details = True
     can_export = True
+    edit_modal = True
+    details_modal = True
+    create_modal = True
     column_searchable_list = ['user_id', 'book_id', 'point']
     column_list = ('user_id', 'book_id', 'point')
     column_formatters = {
@@ -64,6 +76,9 @@ class ReviewModel(ModelView):
 class BorrowingModel(ModelView):
     can_view_details = True
     can_export = True
+    edit_modal = True
+    details_modal = True
+    create_modal = True
     column_filters = ['user_ms_code', 'book_title', 'amount', 'penalty', 'book_title']
     column_searchable_list = ['user_ms_code', 'book_title', 'amount', 'penalty', 'book_title']
     column_formatters = {
@@ -298,6 +313,7 @@ class BookAnalysisView(BaseView):
         return books_to_remove, books_to_add
 
 
+
 class ModelManagementView(BaseView):
     @expose('/')
     def index(self):
@@ -420,7 +436,39 @@ def train_logistic_regression():
     return model, accuracy, confusion_matrix_str
 
 
+class HeatMap(BaseView):
+    @expose('/')
+    def index(self, cls=None):
+        with app.app_context():
+            # Truy vấn dữ liệu
+            engine = db.get_engine()
+            books = pd.read_sql_query('SELECT * FROM book', engine)
+            reviews = pd.read_sql_query('SELECT * FROM review', engine)
+
+            # Kết hợp dữ liệu
+            book_reviews = pd.merge(books, reviews, left_on='id', right_on='book_id')
+            avg_reviews = book_reviews.groupby(['book_category', 'book_id'])['point'].mean().reset_index()
+
+            # Vẽ biểu đồ phân tán
+            plt.figure(figsize=(13, 9))
+            sns.scatterplot(data=avg_reviews, x='book_category', y='point', hue='book_category', palette='viridis')
+            plt.title('Điểm Đánh Giá Theo Thể Loại Sách')
+            plt.xlabel('Thể Loại Sách')
+            plt.ylabel('Điểm')
+
+            # Lưu hình ảnh
+            img = io.BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            plt.close()
+
+            # Chuyển đổi thành base64
+            img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
+            return self.render('admin/heatmap.html', img_data=img_base64)
+
+
 admin.add_view(ProductView(Book, db.session))
+admin.add_view(FacultyView(Faculty, db.session))
 admin.add_view(UserView(User, db.session))
 admin.add_view(ReviewModel(Review, db.session))
 admin.add_view(BorrowingModel(Borrowing_Receipt, db.session))
@@ -429,5 +477,6 @@ admin.add_view((TotalAmount(name='Total Amount')))
 admin.add_view(ForecastView(name='Forecast', endpoint='forecast'))
 admin.add_view(BookAnalysisView(name='Book Analysis', endpoint='book_analysis', category='Reports'))
 admin.add_view(ModelManagementView(name='Model Management'))
+admin.add_view(HeatMap(name='Heat Map'))
 
 
